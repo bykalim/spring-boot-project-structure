@@ -15,9 +15,9 @@ import org.springframework.security.config.Customizer
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
-import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer.AuthorizationManagerRequestMatcherRegistry
 import org.springframework.security.config.annotation.web.configurers.ExceptionHandlingConfigurer
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.resource.OAuth2ResourceServerConfigurer
+import org.springframework.security.config.annotation.web.invoke
 import org.springframework.security.core.userdetails.User
 import org.springframework.security.core.userdetails.UserDetailsService
 import org.springframework.security.oauth2.core.AuthorizationGrantType
@@ -66,14 +66,13 @@ class SecurityConfig {
     @Order(2)
     @Throws(Exception::class)
     fun standardSecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
-        // @formatter:off
-        http
-        .authorizeHttpRequests(Customizer {authorize:AuthorizationManagerRequestMatcherRegistry -> authorize
-        .anyRequest().authenticated()}
-        )
-        .formLogin(Customizer.withDefaults())
-        
-                // @formatter:on
+        http.invoke {
+            authorizeRequests {
+                authorize(anyRequest, authenticated)
+            }
+            formLogin {
+            }
+        }
         return http.build()
     }
 
@@ -92,6 +91,7 @@ class SecurityConfig {
         .scope(OidcScopes.PROFILE)
         .clientSettings(ClientSettings.builder().requireAuthorizationConsent(true).build())
         .build()
+
          val registeredClient = RegisteredClient.withId(UUID.randomUUID().toString())
         .clientId("messaging-client")
         .clientSecret("{noop}secret")
@@ -123,12 +123,6 @@ class SecurityConfig {
     fun jwtDecoder(keyPair: KeyPair): JwtDecoder {
         return NimbusJwtDecoder.withPublicKey(keyPair.public as RSAPublicKey).build()
     }
-
-    @Bean
-    fun providerSettings(): AuthorizationServerSettings {
-        return AuthorizationServerSettings.builder().issuer("http://localhost:9000").build()
-    }
-
     @Bean
     fun userDetailsService(): UserDetailsService {
         // @formatter:off
